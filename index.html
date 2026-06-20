@@ -1,0 +1,296 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Factorio Video Blueprint</title>
+    <style>
+        /* 工业黑橙风格 */
+        :root {
+            --bg-dark: #1C1C1C; --panel-bg: #2b2b2d; --border-copper: #D37A2F;
+            --text-light: #E0E0E0; --text-muted: #888888;
+            --btn-normal: #C87127; --btn-hover: #E58E26; --danger: #A33C3A;
+        }
+
+        body { background-color: var(--bg-dark); color: var(--text-light); font-family: "Consolas", "Courier New", monospace; margin: 0; padding: 20px; box-sizing: border-box; }
+        h1 { text-align: center; color: var(--border-copper); text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px dashed var(--border-copper); padding-bottom: 10px; }
+        .container { max-width: 850px; margin: 0 auto; }
+        .panel { background-color: var(--panel-bg); border: 2px solid var(--border-copper); padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .col { display: flex; flex-direction: column; width: 48%; }
+        label { color: var(--border-copper); font-weight: bold; margin-bottom: 5px; }
+
+        input[type="text"], input[type="number"], textarea { background-color: #111; color: #A3D977; border: 1px solid var(--border-copper); padding: 8px; font-family: inherit; border-radius: 3px; }
+        textarea { width: 100%; height: 120px; resize: vertical; word-break: break-all; box-sizing: border-box; }
+
+        button { background-color: var(--btn-normal); color: #fff; border: none; padding: 10px 20px; font-family: inherit; font-weight: bold; font-size: 16px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
+        button:hover { background-color: var(--btn-hover); box-shadow: 0 0 10px var(--btn-hover); }
+        button:disabled { background-color: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: #111; height: 6px; border-radius: 3px; outline: none; border: 1px solid var(--border-copper); }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 20px; background: var(--btn-normal); cursor: pointer; border-radius: 2px; }
+
+        .info-tag { background: #111; padding: 5px 10px; border: 1px solid #444; border-radius: 3px; font-size: 14px; }
+
+        /* 等待动画遮罩 */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; flex-direction: column; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #444; border-top: 5px solid var(--border-copper); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 拖拽状态样式 */
+        body.drag-over::after { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); border: 4px dashed var(--border-copper); z-index: 998; box-sizing: border-box; }
+        .drop-hint { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: bold; color: var(--border-copper); pointer-events: none; z-index: 999; background: #111; padding: 30px 50px; border: 2px solid var(--border-copper); border-radius: 8px; box-shadow: 0 0 20px rgba(211, 122, 47, 0.5); }
+        body.drag-over .drop-hint { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="drop-hint">📂 松开鼠标，立刻加载视频</div>
+
+<div class="overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <h2 id="loadingTitle" style="color: var(--border-copper); margin-top: 20px;">[ 正在组装齿轮与组合算符... ]</h2>
+    <p id="loadingDesc" style="color: #aaa;">这可能需要一点时间</p>
+</div>
+
+<div class="container">
+    <h1>⚙️ 异星工场 视频蓝图生成器 ⚙️</h1>
+
+    <div class="panel">
+        <!-- ========== 修改：优化后的预览图容器 ========== -->
+        <div class="row" style="justify-content: center; margin-bottom: 15px;">
+            <div id="previewContainer" style="display: none; flex-direction: column; align-items: center; background: #000; border: 1px solid var(--border-copper); padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box;">
+                <span id="previewLabel" style="font-size: 13px; color: var(--border-copper); margin-bottom: 5px; font-weight: bold;">预览画面</span>
+                <!-- CSS利用 width: 100% 和 object-fit: contain 强行放大画面，image-rendering: pixelated 保证放大后呈现清脆的异星工厂像素风而不至于模糊发虚 -->
+                <img id="previewImage" src="" alt="预览帧" style="height: 250px; width: 100%; object-fit: contain; border-radius: 3px; image-rendering: pixelated;">
+            </div>
+        </div>
+        <!-- ==================================== -->
+
+        <div class="row">
+            <div class="col">
+                <label>► 起始帧 <span id="startVal" style="color:#fff;">0</span></label>
+                <!-- oninput 新增传参 'start' -->
+                <input type="range" id="startFrame" min="0" max="100" value="0" disabled oninput="updateValues('start')">
+            </div>
+            <div class="col">
+                <label>■ 结束帧 <span id="endVal" style="color:#fff;">100</span></label>
+                <!-- oninput 新增传参 'end' -->
+                <input type="range" id="endFrame" min="0" max="100" value="100" disabled oninput="updateValues('end')">
+            </div>
+        </div>
+        <div class="row">
+            <div style="flex-grow: 1; margin-right: 15px;">
+                <label>选择输入文件 (可以直接将视频文件拖拽到本窗口中):</label>
+                <input type="text" id="videoPath" style="width: 100%; background: #222;" readonly placeholder="等待选择源文件...">
+            </div>
+            <div style="margin-top: 22px;">
+                <button id="browseBtn" onclick="selectVideo()">📂 浏览文件</button>
+            </div>
+        </div>
+        <div class="row" style="margin-bottom: 0;">
+            <span class="info-tag" id="videoInfo">视频信息: 未加载</span>
+        </div>
+    </div>
+
+    <div class="panel">
+        
+        <div class="row" style="margin-top: 25px;">
+            <div class="col" style="width: 30%;">
+                <label>⏱️ 目标FPS设置</label>
+                <input type="number" id="fpsInput" value="24" disabled>
+            </div>
+            <div class="col" style="width: 30%;">
+                <label>⏩ 抽帧跨度 (Step)</label>
+                <!-- 新增 onchange 校验逻辑，如果用户手填小于1自动恢复为1 -->
+                <input type="number" id="frameInterval" value="10" min="1" disabled title="值越大，提取的图片越少，蓝图越小" onchange="if(this.value < 1 || isNaN(this.value)) this.value = 1;">
+            </div>
+            <div class="col" style="width: 30%; align-items: flex-end; justify-content: flex-end;">
+                <button id="generateBtn" onclick="generate()" disabled style="width: 100%;">🚀 生成蓝图</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <label>📜 蓝图代码 (Blueprint String):</label>
+            <button id="copyBtn" onclick="copyToClipboard()" disabled style="padding: 5px 15px; font-size: 14px; background: #2D6A4F;">📋 一键复制</button>
+        </div>
+        <textarea id="outputArea" readonly placeholder="蓝图字符串将在这里生成..."></textarea>
+    </div>
+</div>
+
+<script>
+    let maxFrames = 0;
+    // 增加一个变量用于防抖
+    let previewTimeout = null; 
+
+    // --- 拖拽 UI 效果交互 ---
+    let dragCounter = 0;
+    document.body.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.body.classList.add('drag-over'); });
+    document.body.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) document.body.classList.remove('drag-over'); });
+    document.body.addEventListener('dragover', (e) => { e.preventDefault(); });
+    document.body.addEventListener('drop', (e) => { e.preventDefault(); dragCounter = 0; document.body.classList.remove('drag-over'); });
+
+    // --- 按钮：点击浏览 ---
+    async function selectVideo() {
+        document.getElementById('browseBtn').disabled = true;
+        
+        // 1. 只负责拿路径，这瞬间完成，绝对不卡
+        const path = await pywebview.api.select_file();
+        
+        if (path) {
+            // 2. 拿到路径后触发核心工作流
+            await handleDroppedFile(path);
+        } else {
+            // 用户取消了选择
+            document.getElementById('browseBtn').disabled = false;
+        }
+    }
+
+    // --- 核心工作流：读取并分析视频信息（点击或拖拽最终都会走到这里） ---
+    async function handleDroppedFile(path) {
+        document.getElementById('browseBtn').disabled = true;
+        document.getElementById('loadingTitle').innerText = "[ 正在扫描视频光盘数据... ]";
+        document.getElementById('loadingDesc').innerText = "解析视频元数据，请稍候...";
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        setTimeout(async () => {
+            const info = await pywebview.api.process_video(path);
+            
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('browseBtn').disabled = false;
+
+            if (info && info.success) {
+                document.getElementById('videoPath').value = info.path;
+                maxFrames = info.total_frames;
+                
+                ['startFrame', 'endFrame', 'fpsInput', 'frameInterval', 'generateBtn'].forEach(id => {
+                    document.getElementById(id).disabled = false;
+                });
+                
+                // 【修复GIF最后一张图报错】：因为读取索引是从 0 开始的，最大合法索引只能是 总帧数-1
+                const maxValidFrame = Math.max(0, maxFrames - 1);
+                
+                document.getElementById('startFrame').max = maxValidFrame;
+                document.getElementById('endFrame').max = maxValidFrame;
+                document.getElementById('endFrame').value = maxValidFrame;
+                document.getElementById('fpsInput').value = Math.round(info.fps);
+                document.getElementById('videoInfo').innerText = `视频信息: ${info.fps.toFixed(2)} FPS | 共计 ${maxFrames} 帧`;
+                
+                // 文件加载完成后，默认读取并显示起始帧的预览图
+                updateValues('start'); 
+            } else {
+                alert("读取错误: " + (info ? info.error : "未知错误"));
+            }
+        }, 150);
+    }
+
+   function updateValues(triggerSource) {
+        let start = parseInt(document.getElementById('startFrame').value);
+        let end = parseInt(document.getElementById('endFrame').value);
+        const maxIndex = parseInt(document.getElementById('endFrame').max);
+        
+        // 修正逻辑，确保起始帧不能超过结束帧
+        if(start >= end) { 
+            if(triggerSource === 'start') {
+                start = Math.max(0, end - 1); 
+                document.getElementById('startFrame').value = start; 
+            } else if (triggerSource === 'end') {
+                end = Math.min(maxIndex, start + 1);
+                document.getElementById('endFrame').value = end;
+                
+                // 万一 start 已经顶到了最大值，导致 end 无法 +1，需要反推保护 start
+                if(start >= end) {
+                    start = Math.max(0, end - 1);
+                    document.getElementById('startFrame').value = start;
+                }
+            }
+        }
+        
+        document.getElementById('startVal').innerText = start;
+        document.getElementById('endVal').innerText = end;
+
+        // ========== 预览防抖加载逻辑 ==========
+        let targetFrame = (triggerSource === 'start') ? start : end;
+        if(targetFrame !== undefined && !isNaN(targetFrame)) {
+            clearTimeout(previewTimeout);
+            // 延迟 200ms 执行：只有当滑块停止拖拽 200 毫秒后，才会实际请求后端获取图片
+            previewTimeout = setTimeout(() => {
+                fetchPreview(targetFrame, triggerSource);
+            }, 200); 
+        }
+    }
+
+     // ========== 请求 Python 后端读取图片并显示 ==========
+    async function fetchPreview(frameIdx, source) {
+        const path = document.getElementById('videoPath').value;
+        if(!path) return;
+        
+        const container = document.getElementById('previewContainer');
+        const label = document.getElementById('previewLabel');
+        const img = document.getElementById('previewImage');
+        
+        container.style.display = 'flex';
+        const sourceName = source === 'start' ? '起始帧' : '结束帧';
+        label.innerText = `[ 读取中... ${sourceName} : ${frameIdx} ]`;
+        
+        // 发送请求到后端的 get_frame_preview
+        const res = await pywebview.api.get_frame_preview(path, frameIdx);
+        
+        if(res && res.success) {
+            img.src = res.image;
+            label.innerText = `👁️ ${sourceName}预览 (第 ${frameIdx} 帧)`;
+        } else {
+            label.innerText = `❌ 无法预览第 ${frameIdx} 帧`;
+        }
+    }
+
+    async function generate() {
+        const path = document.getElementById('videoPath').value;
+        const fps = document.getElementById('fpsInput').value;
+        const start = document.getElementById('startFrame').value;
+        const end = document.getElementById('endFrame').value;
+        
+        // 【双重校验】确保传入后端的跨度必定大于 0
+        let interval = parseInt(document.getElementById('frameInterval').value);
+        if (isNaN(interval) || interval < 1) {
+            interval = 1;
+            document.getElementById('frameInterval').value = 1;
+        }
+
+        document.getElementById('loadingTitle').innerText = "[ 正在组装齿轮与组合算符... ]";
+        document.getElementById('loadingDesc').innerText = "处理视频帧并生成巨型蓝图，这可能需要一点时间";
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('outputArea').value = "";
+        document.getElementById('copyBtn').disabled = true;
+
+        // 延迟 150ms 让出线程，确保浏览器把动画渲染出来了，再去进行高负载的读取
+        setTimeout(async () => {
+            const response = await pywebview.api.generate_blueprint(path, fps, start, end, interval);
+            document.getElementById('loadingOverlay').style.display = 'none';
+
+            if(response && response.success) {
+                document.getElementById('outputArea').value = response.blueprint;
+                document.getElementById('copyBtn').disabled = false;
+            } else {
+                alert("生成失败:\n" + (response ? response.error : "未知错误"));
+            }
+        }, 150);
+    }
+
+    function copyToClipboard() {
+        const copyText = document.getElementById("outputArea");
+        copyText.select();
+        document.execCommand("copy");
+        
+        const btn = document.getElementById('copyBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "✔️ 复制成功!";
+        btn.style.background = "#A3D977";
+        btn.style.color = "#111";
+        setTimeout(() => { btn.innerText = originalText; btn.style.background = "#2D6A4F"; btn.style.color = "#fff"; }, 2000);
+    }
+</script>
+</body>
+</html>
