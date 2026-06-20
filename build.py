@@ -15,6 +15,7 @@ if __name__ == '__main__':
         '--hidden-import=av',               # 强制引入 pyav (防 imageio 找不到解码器)
         '--hidden-import=imageio.plugins.pyav', # 同上
         '--clean',                          # 打包前清理临时文件
+        '--copy-metadata=imageio',
         '--icon=output.ico',                 # 如果你有图标文件 app.ico，把这行注释取消掉
     ])
     
