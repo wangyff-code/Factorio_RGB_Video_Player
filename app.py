@@ -46,7 +46,19 @@ class Api:
             end_frame = int(end_frame)
             frame_interval = int(frame_interval)
             
-            bp_string = gen_video_blueprint(path, fps, start_frame, end_frame, frame_interval)
+            # === 新增：进度回调函数 ===
+            def progress_handler(percent, message):
+                if self._window:
+                    # 使用 JSON 转义确保字符串传给 JS 时不会引起引号冲突报错
+                    safe_msg = json.dumps(message)
+                    # 调用前端写好的 updateProgress(百分比, 提示文字)
+                    self._window.evaluate_js(f"updateProgress({percent}, {safe_msg})")
+
+            # 将回调传给引擎
+            bp_string = gen_video_blueprint(
+                path, fps, start_frame, end_frame, frame_interval,
+                progress_callback=progress_handler
+            )
             return {"success": True, "blueprint": bp_string}
         except Exception as e:
             return {"success": False, "error": str(e)}

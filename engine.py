@@ -6,8 +6,8 @@ import numpy as np
 from PIL import Image,ImageEnhance
 from io import BytesIO
 import imageio.v3 as iio
-
-
+import av
+import itertools
 # 红线1 绿线2 电线5
 
 
@@ -232,7 +232,16 @@ def read_video(video_path,start_frame,end_frame,frame_interval):
                 video_list.append(Image.fromarray(corrected_frame))
     return video_list
 
-
+def read_video_iterator(video_path, start_frame, end_frame, frame_interval):
+    # with 语句会在迭代器结束或中途中断时自动安全地关闭文件
+    with iio.imopen(video_path, "r", plugin="pyav") as file:
+        for idx in range(start_frame, end_frame + 1):
+            # 优化：先判断是否满足间隔，满足再去读帧，极大提升速度
+            if idx % frame_interval == 0:
+                frame = file.read(index=idx)
+                corrected_frame = frame[:, :, ::-1]
+                # 使用 yield 返回单帧，而不是塞进 list
+                yield Image.fromarray(corrected_frame)
 
 class gen_item_class():
     def __init__(self):
@@ -445,30 +454,48 @@ def image_to_MN_patches(img, M, N):
     return np.array(grid_matrix)
 
 def get_video_info(video_path):
-    """获取视频的时长、帧率和总帧数"""
+    """
+    轻量级、极速、高准确率的视频信息获取。
+    通过直接拆解视频包（demux）来数帧，跳过画面解码（decode），速度极快。
+    """
     try:
-        meta = iio.immeta(video_path, plugin="pyav")
-        fps = meta.get('fps', 24.0)
-        # pyav插件有时不直接给总帧数，可以通过 duration * fps 估算，或取 shape
-        try:
-            props = iio.improps(video_path, plugin="pyav")
-            total_frames = props.shape[0] if props.shape else 0
-        except:
-            total_frames = int(meta.get('duration', 0) * fps)
+        # 打开视频容器
+        with av.open(video_path) as container:
+            # 获取第一个视频流
+            video_stream = container.streams.video[0]
             
-        if total_frames <= 0: total_frames = 1000 # 保底默认值
+            # 1. 获取帧率 (通常 average_rate 是一个分数对象，转为 float)
+            fps = 24.0
+            if video_stream.average_rate and video_stream.average_rate > 0:
+                fps = float(video_stream.average_rate)
+            elif video_stream.base_rate and video_stream.base_rate > 0:
+                fps = float(video_stream.base_rate)
+            
+            # 2. 极速数帧法：只遍历数据包(Packet)，不解码成图像(Frame)
+            total_frames = 0
+            
+            # demux() 是“解复用”，它只会把视频流中的压缩数据块（如H264块）剥离出来
+            # 因为没有进行将 H264 还原成 RGB 像素矩阵的操作，所以耗时极短
+            for packet in container.demux(video_stream):
+                # 过滤掉偶尔出现的空数据包，正常的 packet 代表一帧
+                if packet.dts is not None and packet.size > 0:
+                    total_frames += 1
+                    
+        return {"success": True, "fps": round(fps, 2), "total_frames": total_frames}
         
-        return {"success": True, "fps": float(fps), "total_frames": int(total_frames)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval):
+def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval,progress_callback=None):
 
-    frame_list = read_video(name,start_frame,end_frame,frame_interval)
-    img = frame_list[0]
+    video_stream  = read_video_iterator(name,start_frame,end_frame,frame_interval)
+    img =  next(video_stream)
 
     clip_wide_num = int((img.width/img.height)*5)
 
+    # === 新增：计算剩余要处理的总帧数 ===
+    total_yields = sum(1 for x in range(start_frame, end_frame + 1) if x % frame_interval == 0)
+    total_frames_expected = max(1, total_yields - 1) # 减去刚才 next() 消耗掉的第一帧
 
     gen_item = gen_item_class()
 
@@ -477,7 +504,7 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval):
 
     new_fps = fps/frame_interval
     div_num = int(24/new_fps)
-    max_count = len(frame_list)*div_num
+    max_count = end_frame - start_frame
 
     div_id = gen_item.add_arithmetic_combinator(0,-2,'/',div_num)
     frame_limit_id = gen_item.add_decider_combinator_f(0,-4,max_count)
@@ -485,106 +512,148 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval):
     gen_item.add_wire_list(gen_f_id,3,frame_limit_id,1)
     gen_item.add_wire_list(frame_limit_id,3,gen_f_id,1)
     gen_item.add_wire_list(gen_f_id,3,div_id,1)
+    frame_list = []
 
+    if progress_callback:
+        progress_callback(5, "正在初始化屏幕及基础线路...")
+    # ==========================================
+    # 准备缓存字典，用于在跨帧循环时保存状态
+    # ==========================================
+    disp_ctr_ports = {}
+    item_maps = {}
+    # line_ids_map 结构: {i: {k: [id2_list]}}
+    line_ids_map = {i: {k: [] for k in range(5)} for i in range(clip_wide_num)}
+    ele_line1_map = {i: [] for i in range(clip_wide_num)}
+    ele_line2_map = {i: [] for i in range(clip_wide_num)}
 
-    for i in range(0,clip_wide_num):
+    # ==========================================
+    # 第一步：只与 i 相关的静态屏幕生成 (原循环的上半部分)
+    # ==========================================
+    for i in range(0, clip_wide_num):
         disp_ctr_port = []
-        ele_line1 = []
-        ele_line2 = []
+        
+        # 你的原代码: 生成屏幕和内部连线
         item_map,electric_list0,lap_ele_list = gen_screen(gen_item,14*i,14*0,2)
         disp_ctr_port.append(lap_ele_list[1])
         disp_ctr_port.append(electric_list0[1])
         disp_ctr_port.append(electric_list0[2])
+        
         item_map,electric_list1,lap_ele_list = gen_screen(gen_item,14*i,14*1,2)
         gen_item.add_wire_list(electric_list0[0],1,electric_list1[1],1)
         gen_item.add_wire_list(electric_list0[0],2,electric_list1[1],2)
         gen_item.add_wire_list(electric_list0[0],5,electric_list1[1],5)
-
         gen_item.add_wire_list(electric_list0[3],1,electric_list1[2],1)
         gen_item.add_wire_list(electric_list0[3],2,electric_list1[2],2)
         gen_item.add_wire_list(electric_list0[3],5,electric_list1[2],5)
         gen_item.add_wire_list(electric_list1[1],2,lap_ele_list[1],2)
         electric_list0 = electric_list1
 
-
         item_map,electric_list1,lap_ele_list = gen_screen(gen_item,14*i,14*2,2)
         gen_item.add_wire_list(electric_list0[0],1,electric_list1[1],1)
         gen_item.add_wire_list(electric_list0[0],2,electric_list1[1],2)
         gen_item.add_wire_list(electric_list0[0],5,electric_list1[1],5)
-
         gen_item.add_wire_list(electric_list1[3],2,lap_ele_list[3],2)
-
-
         gen_item.add_wire_list(electric_list0[3],1,electric_list1[2],1)
         gen_item.add_wire_list(electric_list0[3],2,electric_list1[2],2)
         gen_item.add_wire_list(electric_list0[3],5,electric_list1[2],5)
         electric_list0 = electric_list1
-
 
         item_map,electric_list1,lap_ele_list  = gen_screen(gen_item,14*i,14*3,1)
         gen_item.add_wire_list(electric_list0[0],1,electric_list1[1],1)
         gen_item.add_wire_list(electric_list0[0],2,electric_list1[1],2)
         gen_item.add_wire_list(electric_list0[0],5,electric_list1[1],5)
-
         gen_item.add_wire_list(electric_list0[3],1,electric_list1[2],1)
         gen_item.add_wire_list(electric_list0[3],2,electric_list1[2],2)
         gen_item.add_wire_list(electric_list0[3],5,electric_list1[2],5)
-
         gen_item.add_wire_list(electric_list1[1],1,lap_ele_list[1],1)
         electric_list0 = electric_list1
-
 
         item_map,electric_list1,lap_ele_list  = gen_screen(gen_item,14*i,14*4,1)
         gen_item.add_wire_list(electric_list0[0],1,electric_list1[1],1)
         gen_item.add_wire_list(electric_list0[0],2,electric_list1[1],2)
         gen_item.add_wire_list(electric_list0[0],5,electric_list1[1],5)
-
         gen_item.add_wire_list(electric_list0[3],1,electric_list1[2],1)
         gen_item.add_wire_list(electric_list0[3],2,electric_list1[2],2)
         gen_item.add_wire_list(electric_list0[3],5,electric_list1[2],5)
         gen_item.add_wire_list(electric_list1[3],1,lap_ele_list[3],1)
-        electric_list0 = electric_list1
+        
+        # 缓存该 i 下的 disp_ctr_port 和最终的 item_map 供后面使用
+        disp_ctr_ports[i] = disp_ctr_port
+        item_maps[i] = item_map
 
-        for k in range(0,5):
-            line_id = []
-            for frame_num in  range(0,len(frame_list)):
-                grid_matrix = image_to_MN_patches(frame_list[frame_num],5,clip_wide_num)
+    # ==========================================
+    # 第二步：按帧处理 (frame_num 循环在最外层！)
+    # ==========================================
+    for frame_num, frame in enumerate(video_stream):
+        # === 新增：汇报百分比 (从 5% 增长到 90%) ===
+        if progress_callback:
+            percent = 5 + int((frame_num / total_frames_expected) * 85)
+            progress_callback(percent, f"正在生成视频帧数据... ({frame_num + 1}/{total_frames_expected})")
+        # 【性能优化核心】：一帧图片只解析一次！
+        grid_matrix = image_to_MN_patches(frame, 5, clip_wide_num)
+        
+        for i in range(0, clip_wide_num):
+            item_map = item_maps[i]
+            disp_ctr_port = disp_ctr_ports[i]
+            
+            for k in range(0, 5):
                 patch_array = grid_matrix[k][i]
-                sig_list = gen_frame_constent(item_map,patch_array)
-                id1=gen_item.add_constant_combinator(i*14+3+k,-1-frame_num*3-2,sig_list)
-                id2=gen_item.add_decider_combinator(i*14+3+k,-1-frame_num*3,frame_num)
-                gen_item.add_wire_list(id1,2,id2,2)
-                if(frame_num%2 == 0 and k == 0):
-                    ele_line1.append(gen_item.add_medium_electric_pole(i*14+2,-1-frame_num*3))
-                if(frame_num%2 == 0 and k == 4):
-                    ele_line2.append(gen_item.add_medium_electric_pole(i*14+4+k,-1-frame_num*3))
-                line_id.append(id2)
-                if(frame_num == 0):
+                sig_list = gen_frame_constent(item_map, patch_array)
+                id1 = gen_item.add_constant_combinator(i*14+3+k, -1-frame_num*3-2, sig_list)
+                id2 = gen_item.add_decider_combinator(i*14+3+k, -1-frame_num*3, frame_num)
+                gen_item.add_wire_list(id1, 2, id2, 2)
+                
+                if frame_num % 2 == 0 and k == 0:
+                    ele_line1_map[i].append(gen_item.add_medium_electric_pole(i*14+2, -1-frame_num*3))
+                if frame_num % 2 == 0 and k == 4:
+                    ele_line2_map[i].append(gen_item.add_medium_electric_pole(i*14+4+k, -1-frame_num*3))
+                
+                # 将 id2 收集起来，等所有帧处理完再连线
+                line_ids_map[i][k].append(id2)
+                
+                if frame_num == 0:
                     fram_sig_id_list.append(id2)
-                    if(k == 0):
-                        gen_item.add_wire_list(id2,4,disp_ctr_port[0],2)
-                    elif(k == 1):
-                        gen_item.add_wire_list(id2,4,disp_ctr_port[1],2)
-                    elif(k == 2):
-                        gen_item.add_wire_list(id2,4,disp_ctr_port[2],2)
-                    elif(k == 3):
-                        gen_item.add_wire_list(id2,3,disp_ctr_port[1],1)
-                    elif(k == 4):
-                        gen_item.add_wire_list(id2,3,disp_ctr_port[2],1)
-            for line in range(0,len(line_id)-1):
-                gen_item.add_wire_list(line_id[line],1,line_id[line+1],1)
+                    if k == 0:
+                        gen_item.add_wire_list(id2, 4, disp_ctr_port[0], 2)
+                    elif k == 1:
+                        gen_item.add_wire_list(id2, 4, disp_ctr_port[1], 2)
+                    elif k == 2:
+                        gen_item.add_wire_list(id2, 4, disp_ctr_port[2], 2)
+                    elif k == 3:
+                        gen_item.add_wire_list(id2, 3, disp_ctr_port[1], 1)
+                    elif k == 4:
+                        gen_item.add_wire_list(id2, 3, disp_ctr_port[2], 1)
+    if progress_callback:
+        progress_callback(95, "正在进行信号与电网跨帧收尾连线...")
+    # ==========================================
+    # 第三步：跨帧连线 (原循环的收尾部分)
+    # ==========================================
+    for i in range(0, clip_wide_num):
+        # 处理信号线连线
+        for k in range(0, 5):
+            line_id = line_ids_map[i][k]
+            for line in range(0, len(line_id)-1):
+                gen_item.add_wire_list(line_id[line], 1, line_id[line+1], 1)
                 if k < 3:
-                    gen_item.add_wire_list(line_id[line],4,line_id[line+1],4)
+                    gen_item.add_wire_list(line_id[line], 4, line_id[line+1], 4)
                 else:
-                    gen_item.add_wire_list(line_id[line],3,line_id[line+1],3)
-            for line in range(0,len(ele_line1)-1):
-                gen_item.add_wire_list(ele_line1[line],5,ele_line1[line+1],5)
-            for line in range(0,len(ele_line2)-1):
-                gen_item.add_wire_list(ele_line2[line],5,ele_line2[line+1],5)
-        gen_item.add_wire_list(ele_line1[0],5,disp_ctr_port[1],5) 
-        gen_item.add_wire_list(ele_line2[0],5,disp_ctr_port[1],5)  
-        row_list.append(ele_line1[0])   
-        row_list.append(ele_line2[0])    
+                    gen_item.add_wire_list(line_id[line], 3, line_id[line+1], 3)
+    
+        # 处理电线杆连线
+        ele_line1 = ele_line1_map[i]
+        ele_line2 = ele_line2_map[i]
+        
+        for line in range(0, len(ele_line1)-1):
+            gen_item.add_wire_list(ele_line1[line], 5, ele_line1[line+1], 5)
+        for line in range(0, len(ele_line2)-1):
+            gen_item.add_wire_list(ele_line2[line], 5, ele_line2[line+1], 5)
+    
+        disp_ctr_port = disp_ctr_ports[i]
+        if ele_line1 and ele_line2:
+            gen_item.add_wire_list(ele_line1[0], 5, disp_ctr_port[1], 5) 
+            gen_item.add_wire_list(ele_line2[0], 5, disp_ctr_port[1], 5)  
+            row_list.append(ele_line1[0])   
+            row_list.append(ele_line2[0])
 
     for line in range(0,len(row_list)-1):
         gen_item.add_wire_list(row_list[line],5,row_list[line+1],5)
@@ -594,4 +663,13 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval):
         gen_item.add_wire_list(fram_sig_id_list[line],1,fram_sig_id_list[line+1],1)
         if line == 0:
             gen_item.add_wire_list(div_id,3,fram_sig_id_list[0],1)
+    if progress_callback:
+        progress_callback(100, "生成完毕，正在编码 JSON 数据...")
     return gen_item.pack()
+
+if __name__ == "__main__":
+    name = r'D:/A_step/blue/p/猫和老鼠 - S01E85 - 室内溜冰场.mkv'
+    b = gen_video_blueprint(name,24,0,400,4)
+    f = open('o.txt','w')
+    f.write(b)
+    f.close()
