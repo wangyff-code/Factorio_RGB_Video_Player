@@ -503,7 +503,7 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval,progress_c
     fram_sig_id_list = []
 
     new_fps = fps/frame_interval
-    div_num = int(24/new_fps)
+    div_num = int(24/new_fps)+1
     max_count = end_frame - start_frame
 
     div_id = gen_item.add_arithmetic_combinator(0,-2,'/',div_num)
