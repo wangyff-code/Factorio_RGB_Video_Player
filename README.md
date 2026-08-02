@@ -17,7 +17,6 @@
 
 ## 📸 界面预览 (Screenshots)
 
-*(提示：在此处贴上你软件运行后的截图)*
 > ![UI_Screenshot](./img/1.png)
 > ![UI_Screenshot](./img/2.png)
 > ![UI_Screenshot](./img/3.png)
