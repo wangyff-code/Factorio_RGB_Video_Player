@@ -4,10 +4,11 @@ import zlib
 import base64
 import numpy as np
 from PIL import Image,ImageEnhance
-from io import BytesIO
+from io import BytesIO, StringIO
 import imageio.v3 as iio
 import av
 import itertools
+import tempfile
 # 红线1 绿线2 电线5
 
 
@@ -189,6 +190,59 @@ def encode_zlib_b64_json(json_data):
     return final_str
 
 
+def encode_zlib_b64_chunks(chunks):
+    """Incrementally compress JSON byte chunks and return a Factorio string."""
+    compressor = zlib.compressobj(level=6)
+    output = StringIO()
+    output.write('0')
+    base64_remainder = b''
+
+    def write_compressed(data):
+        nonlocal base64_remainder
+        if not data:
+            return
+        data = base64_remainder + data
+        complete_size = (len(data) // 3) * 3
+        if complete_size:
+            output.write(base64.b64encode(data[:complete_size]).decode('ascii'))
+        base64_remainder = data[complete_size:]
+
+    for chunk in chunks:
+        write_compressed(compressor.compress(chunk))
+    write_compressed(compressor.flush())
+
+    if base64_remainder:
+        output.write(base64.b64encode(base64_remainder).decode('ascii'))
+    return output.getvalue()
+
+
+class JsonArraySpool:
+    """Write a JSON array body to disk so generated objects do not retain RAM."""
+
+    def __init__(self):
+        self._file = tempfile.TemporaryFile(mode='w+b')
+        self._has_items = False
+
+    def append(self, value):
+        if self._has_items:
+            self._file.write(b',')
+        self._file.write(
+            json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        )
+        self._has_items = True
+
+    def chunks(self, chunk_size=1024 * 1024):
+        self._file.seek(0)
+        while True:
+            chunk = self._file.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
+    def close(self):
+        self._file.close()
+
+
 
 def get_preview_base64(video_path, frame_idx):
     """
@@ -239,9 +293,18 @@ def read_video_iterator(video_path, start_frame, end_frame, frame_interval):
             # 优化：先判断是否满足间隔，满足再去读帧，极大提升速度
             if idx % frame_interval == 0:
                 frame = file.read(index=idx)
-                corrected_frame = frame[:, :, ::-1]
-                # 使用 yield 返回单帧，而不是塞进 list
-                yield Image.fromarray(corrected_frame)
+                # Decode the source RGB buffer as BGR directly. This preserves
+                # the existing channel order without creating a reversed NumPy
+                # view that Pillow must copy with ndarray.tobytes().
+                yield Image.frombuffer(
+                    'RGB',
+                    (frame.shape[1], frame.shape[0]),
+                    frame,
+                    'raw',
+                    'BGR',
+                    0,
+                    1,
+                )
 
 class gen_item_class():
     def __init__(self):
@@ -263,8 +326,8 @@ class gen_item_class():
         }
         }
         self.entity_number = 0
-        self.entities_list = []
-        self.wire_list = []
+        self.entities_list = JsonArraySpool()
+        self.wire_list = JsonArraySpool()
 
     def add_small_lamp(self,x,y,index):
         self.entity_number += 1
@@ -301,26 +364,18 @@ class gen_item_class():
         self.wire_list.append([nod1,port1,nod2,port2])
 
     def pack(self):
-        fac_dir = {
-        "blueprint": {
-            "icons": [
-                {
-                    "signal": {
-                        "name": "small-lamp"
-                    },
-                    "index": 1
-                }
-            ],
-            "entities": [
-    
-            ],
-            "item": "blueprint",
-            "version": 562949958402048
-        }
-        }
-        fac_dir['blueprint']["entities"] = self.entities_list
-        fac_dir['blueprint']["wires"] = self.wire_list
-        return encode_zlib_b64_json(fac_dir)
+        def json_chunks():
+            yield b'{"blueprint":{"icons":[{"signal":{"name":"small-lamp"},"index":1}],"entities":['
+            yield from self.entities_list.chunks()
+            yield b'],"item":"blueprint","version":562949958402048,"wires":['
+            yield from self.wire_list.chunks()
+            yield b']}}'
+
+        try:
+            return encode_zlib_b64_chunks(json_chunks())
+        finally:
+            self.entities_list.close()
+            self.wire_list.close()
 
 
 
@@ -391,6 +446,39 @@ def gen_frame_constent(item_map,img):
                 sig_list.append(create_constant_list(id,name_list[color_index],int(img[i][k])))
                 id += 1
 
+    return sig_list
+
+
+def gen_frame_content_template(item_map):
+    """Build reusable signal dictionaries and their corresponding pixel indices."""
+    sig_list = []
+    pixel_rows = []
+    pixel_columns = []
+    signal_index = 1
+
+    for row in range(14):
+        for column in range(14):
+            color_index = item_map[column][row]
+            if color_index >= 0:
+                sig_list.append(
+                    create_constant_list(signal_index, name_list[color_index], 0)
+                )
+                pixel_rows.append(row)
+                pixel_columns.append(column)
+                signal_index += 1
+
+    return (
+        sig_list,
+        np.asarray(pixel_rows, dtype=np.intp),
+        np.asarray(pixel_columns, dtype=np.intp),
+    )
+
+
+def update_frame_content(sig_list, pixel_rows, pixel_columns, img):
+    """Update only per-frame counts; JsonArraySpool serializes them immediately."""
+    counts = img[pixel_rows, pixel_columns]
+    for signal, count in zip(sig_list, counts):
+        signal['count'] = int(count)
     return sig_list
 
 def combine_14x14_patch(patch_array):
@@ -521,6 +609,9 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval,progress_c
     # ==========================================
     disp_ctr_ports = {}
     item_maps = {}
+    signal_templates = {}
+    signal_pixel_rows = {}
+    signal_pixel_columns = {}
     # line_ids_map 结构: {i: {k: [id2_list]}}
     line_ids_map = {i: {k: [] for k in range(5)} for i in range(clip_wide_num)}
     ele_line1_map = {i: [] for i in range(clip_wide_num)}
@@ -580,6 +671,11 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval,progress_c
         # 缓存该 i 下的 disp_ctr_port 和最终的 item_map 供后面使用
         disp_ctr_ports[i] = disp_ctr_port
         item_maps[i] = item_map
+        (
+            signal_templates[i],
+            signal_pixel_rows[i],
+            signal_pixel_columns[i],
+        ) = gen_frame_content_template(item_map)
 
     # ==========================================
     # 第二步：按帧处理 (frame_num 循环在最外层！)
@@ -598,7 +694,12 @@ def gen_video_blueprint(name,fps,start_frame,end_frame,frame_interval,progress_c
             
             for k in range(0, 5):
                 patch_array = grid_matrix[k][i]
-                sig_list = gen_frame_constent(item_map, patch_array)
+                sig_list = update_frame_content(
+                    signal_templates[i],
+                    signal_pixel_rows[i],
+                    signal_pixel_columns[i],
+                    patch_array,
+                )
                 id1 = gen_item.add_constant_combinator(i*14+3+k, -1-frame_num*3-2, sig_list)
                 id2 = gen_item.add_decider_combinator(i*14+3+k, -1-frame_num*3, frame_num)
                 gen_item.add_wire_list(id1, 2, id2, 2)

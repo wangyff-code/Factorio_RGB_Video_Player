@@ -8,7 +8,7 @@ if __name__ == '__main__':
     
     PyInstaller.__main__.run([
         'app.py',                           # 主入口文件
-        '--name=Factorio_Video_Blueprint',  # 生成的 exe 名字
+        '--name=Factorio_Video_Blueprint_v_1_2',  # 生成的 exe 名字
         '--windowed',                       # 隐藏控制台黑框 (GUI程序必备)
         '--onefile',                        # 打包成一个独立的 exe 文件
         '--add-data=index.html;.',          # 将 index.html 封装进 exe 里 (注意 Windows 是分号 ;)

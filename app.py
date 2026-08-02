@@ -96,12 +96,13 @@ if __name__ == '__main__':
     # 建立 pywebview 窗口
     html_path = get_resource_path('index.html')
     window = webview.create_window(
-        'Factorio Video Blueprint Generator (异星工场视频蓝图生成器)', 
+        '异星工厂 · 视频蓝图工作台',
         html_path, 
         js_api=api, 
-        width=950, 
-        height=800,
-        background_color='#1E1E1E',
+        width=1180,
+        height=820,
+        min_size=(860, 680),
+        background_color='#0B0D10',
         text_select=True
     )
     # 正确绑定内部 _window 对象

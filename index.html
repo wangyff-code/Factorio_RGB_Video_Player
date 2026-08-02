@@ -1,326 +1,592 @@
-<!-- index.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Factorio Video Blueprint</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>异星工厂 · 视频蓝图工作台</title>
     <style>
-        /* 工业黑橙风格 */
         :root {
-            --bg-dark: #1C1C1C; --panel-bg: #2b2b2d; --border-copper: #D37A2F;
-            --text-light: #E0E0E0; --text-muted: #888888;
-            --btn-normal: #C87127; --btn-hover: #E58E26; --danger: #A33C3A;
+            color-scheme: dark light;
+            --bg: #0b0d10;
+            --sidebar: rgba(20, 23, 28, .88);
+            --surface: rgba(28, 32, 39, .84);
+            --surface-strong: #20252d;
+            --surface-soft: rgba(255,255,255,.045);
+            --line: rgba(255,255,255,.09);
+            --line-strong: rgba(255,255,255,.16);
+            --text: #f5f5f7;
+            --muted: #9a9da5;
+            --subtle: #676b75;
+            --orange: #ff9f0a;
+            --orange-soft: rgba(255,159,10,.14);
+            --green: #32d74b;
+            --red: #ff453a;
+            --blue: #64d2ff;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+            font-synthesis: none;
         }
 
-        body { background-color: var(--bg-dark); color: var(--text-light); font-family: "Consolas", "Courier New", monospace; margin: 0; padding: 20px; box-sizing: border-box; }
-        h1 { text-align: center; color: var(--border-copper); text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px dashed var(--border-copper); padding-bottom: 10px; }
-        .container { max-width: 850px; margin: 0 auto; }
-        .panel { background-color: var(--panel-bg); border: 2px solid var(--border-copper); padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .col { display: flex; flex-direction: column; width: 48%; }
-        label { color: var(--border-copper); font-weight: bold; margin-bottom: 5px; }
-
-        input[type="text"], input[type="number"], textarea { background-color: #111; color: #A3D977; border: 1px solid var(--border-copper); padding: 8px; font-family: inherit; border-radius: 3px; }
-        textarea { width: 100%; height: 120px; resize: vertical; word-break: break-all; box-sizing: border-box; }
-
-        button { background-color: var(--btn-normal); color: #fff; border: none; padding: 10px 20px; font-family: inherit; font-weight: bold; font-size: 16px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
-        button:hover { background-color: var(--btn-hover); box-shadow: 0 0 10px var(--btn-hover); }
-        button:disabled { background-color: #555; color: #888; cursor: not-allowed; box-shadow: none; }
-
-        input[type="range"] { -webkit-appearance: none; width: 100%; background: #111; height: 6px; border-radius: 3px; outline: none; border: 1px solid var(--border-copper); }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 20px; background: var(--btn-normal); cursor: pointer; border-radius: 2px; }
-
-        .info-tag { background: #111; padding: 5px 10px; border: 1px solid #444; border-radius: 3px; font-size: 14px; }
-
-        /* ================= 动画遮罩层与进度条样式 ================= */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; flex-direction: column; }
-        
-        .spinner { width: 50px; height: 50px; border: 5px solid #444; border-top: 5px solid var(--border-copper); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* 进度条外框 */
-        .progress-container { width: 60%; max-width: 500px; background-color: #111; border: 2px solid var(--border-copper); border-radius: 6px; margin-top: 20px; height: 24px; position: relative; overflow: hidden; display: none; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); }
-        
-        /* 进度条内部（工业斜纹动画+呼吸发光） */
-        .progress-bar { 
-            height: 100%; 
-            width: 0%; 
-            background-color: var(--btn-normal); 
-            background-image: repeating-linear-gradient(
-                45deg,
-                rgba(0, 0, 0, 0.2),
-                rgba(0, 0, 0, 0.2) 10px,
-                transparent 10px,
-                transparent 20px
-            );
-            background-size: 28px 28px;
-            animation: moveStripes 1s linear infinite;
-            transition: width 0.15s ease-out; 
-            box-shadow: 0 0 10px rgba(211, 122, 47, 0.8); /* 荧光效果 */
-        }
-        
-        @keyframes moveStripes {
-            0% { background-position: 0 0; }
-            100% { background-position: 28px 0; }
+        [data-theme="light"] {
+            color-scheme: light;
+            --bg: #f1f4f7;
+            --sidebar: rgba(248, 249, 251, .9);
+            --surface: rgba(255, 255, 255, .86);
+            --surface-strong: #ffffff;
+            --surface-soft: rgba(15, 23, 42, .05);
+            --line: rgba(15, 23, 42, .11);
+            --line-strong: rgba(15, 23, 42, .19);
+            --text: #17202b;
+            --muted: #5f6977;
+            --subtle: #7b8592;
+            --orange: #df8200;
+            --orange-soft: rgba(223, 130, 0, .12);
+            --green: #16803b;
+            --red: #d7352d;
+            --blue: #087ea4;
         }
 
-        /* 百分比文字居中 */
-        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #FFF; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; letter-spacing: 1px; }
-        /* ========================================================= */
+        * { box-sizing: border-box; }
+        html, body { min-height: 100%; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.45;
+            letter-spacing: .005em;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 82% 7%, rgba(255,159,10,.13), transparent 28rem),
+                radial-gradient(circle at 18% 84%, rgba(100,210,255,.06), transparent 25rem),
+                linear-gradient(135deg, #0b0d10 0%, #11151b 100%);
+        }
+        [data-theme="light"] body { background: var(--bg); }
+        [data-theme="light"] body::before {
+            background:
+                radial-gradient(circle at 82% 7%, rgba(255, 182, 67, .16), transparent 28rem),
+                radial-gradient(circle at 18% 84%, rgba(100, 210, 255, .08), transparent 25rem),
+                linear-gradient(135deg, #f6f8fa 0%, #edf1f5 100%);
+        }
+        button, input, textarea { font: inherit; }
+        button { border: 0; }
+        button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(100,210,255,.55); outline-offset: 3px; }
 
-        /* 拖拽状态样式 */
-        body.drag-over::after { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); border: 4px dashed var(--border-copper); z-index: 998; box-sizing: border-box; }
-        .drop-hint { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: bold; color: var(--border-copper); pointer-events: none; z-index: 999; background: #111; padding: 30px 50px; border: 2px solid var(--border-copper); border-radius: 8px; box-shadow: 0 0 20px rgba(211, 122, 47, 0.5); }
-        body.drag-over .drop-hint { display: block; }
+        .app-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; transition: grid-template-columns 240ms cubic-bezier(.2,.8,.2,1); }
+        .app-shell.sidebar-collapsed { grid-template-columns: 82px minmax(0, 1fr); }
+        .sidebar {
+            position: sticky; top: 0; height: 100vh; padding: 28px 18px 20px;
+            display: flex; flex-direction: column; gap: 28px;
+            background: var(--sidebar); border-right: 1px solid var(--line);
+            backdrop-filter: blur(24px) saturate(140%); -webkit-backdrop-filter: blur(24px) saturate(140%);
+        }
+        .sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px; min-width: 0; }
+        .brand-mark {
+            display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+            color: #15110a; background: linear-gradient(145deg, #ffd37a, var(--orange));
+            box-shadow: 0 8px 24px rgba(255,159,10,.22); font-size: 18px; font-weight: 800;
+        }
+        .brand strong { display: block; font-size: 15px; letter-spacing: -.02em; }
+        .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+        .sidebar-toggle { display: inline-grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: var(--surface-soft); cursor: pointer; transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background-color 160ms ease; }
+        .sidebar-toggle:hover { color: var(--text); border-color: rgba(255,159,10,.55); background: var(--orange-soft); }
+        .sidebar-toggle:active { transform: scale(.92); }
+        .toggle-icon { font-size: 19px; line-height: 1; }
+        .toggle-copy { display: none; }
+        .eyebrow { color: var(--subtle); font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+        .workflow { display: flex; flex-direction: column; gap: 6px; }
+        .workflow-title { padding: 0 12px 8px; }
+        .step {
+            display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px;
+            min-height: 52px; padding: 8px 10px; border-radius: 14px; color: var(--muted);
+            transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+        .step.active { color: var(--text); background: var(--orange-soft); }
+        .step.done { color: #d7f8dc; }
+        .step:active { transform: scale(.98); }
+        .step-number { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--muted); font-size: 12px; }
+        .step.active .step-number { border-color: var(--orange); color: var(--orange); background: rgba(255,159,10,.1); }
+        .step.done .step-number { border-color: rgba(50,215,75,.6); color: var(--green); }
+        .step-title { font-weight: 650; font-size: 13px; }
+        .step-note { display: block; margin-top: 2px; color: var(--subtle); font-size: 11px; }
+        .step-state { font-size: 12px; color: var(--subtle); }
+        .step.done .step-state { color: var(--green); }
+        .tip-card { margin-top: auto; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); color: var(--muted); font-size: 12px; }
+        .tip-card strong { display: block; color: var(--text); margin-bottom: 5px; font-size: 13px; }
+
+        .main { min-width: 0; padding: 28px clamp(22px, 4vw, 56px) 48px; }
+        .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; max-width: 1280px; margin: 0 auto 30px; }
+        .topbar h1 { margin: 5px 0 7px; font-size: clamp(25px, 3vw, 36px); line-height: 1.08; letter-spacing: -.045em; }
+        .topbar p { margin: 0; color: var(--muted); font-size: 13px; }
+        .top-actions { display: flex; align-items: center; gap: 10px; }
+        .theme-toggle { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-soft); cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: 650; transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background-color 160ms ease; }
+        .theme-toggle:hover { color: var(--text); border-color: rgba(255,159,10,.55); background: var(--orange-soft); }
+        .theme-toggle:active { transform: scale(.96); }
+        .theme-icon { display: grid; place-items: center; width: 16px; height: 16px; color: var(--orange); font-size: 15px; }
+        .status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-soft); color: var(--muted); white-space: nowrap; font-size: 12px; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle); }
+        .status-pill.ready .status-dot { background: var(--green); box-shadow: 0 0 12px rgba(50,215,75,.7); }
+        .status-pill.busy .status-dot { background: var(--orange); box-shadow: 0 0 12px rgba(255,159,10,.7); }
+
+        .workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(330px, .75fr); gap: 18px; max-width: 1280px; margin: 0 auto; }
+        .card { background: linear-gradient(145deg, rgba(35,40,48,.9), rgba(23,27,33,.9)); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 18px 55px rgba(0,0,0,.16); }
+        .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 21px 23px 16px; }
+        .card-title { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+        .card-caption { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+        .stage-card { display: flex; flex-direction: column; min-height: 560px; overflow: hidden; }
+        .stage {
+            position: relative; display: grid; place-items: center; flex: 1; min-height: clamp(420px, 58vh, 620px); margin: 0 14px 14px;
+            overflow: hidden; border: 1px solid var(--line); border-radius: 16px;
+            background: #090b0e radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px);
+            background-size: 18px 18px;
+        }
+        .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,159,10,.06), transparent 45%); }
+        .empty-state { z-index: 1; display: grid; justify-items: center; width: min(86%, 420px); padding: 36px 28px; text-align: center; }
+        .upload-orb { display: grid; place-items: center; width: 66px; height: 66px; margin-bottom: 18px; border: 1px solid rgba(255,159,10,.5); border-radius: 22px; color: var(--orange); background: rgba(255,159,10,.11); box-shadow: 0 0 0 10px rgba(255,159,10,.035); font-size: 26px; }
+        .empty-state h2 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+        .empty-state p { margin: 8px 0 20px; color: var(--muted); font-size: 13px; }
+        .preview-content { display: none; z-index: 1; width: 100%; height: 100%; align-items: center; justify-content: center; padding: 18px; }
+        .preview-content img { width: min(88%, 860px); height: min(84%, 560px); object-fit: contain; border-radius: 12px; image-rendering: crisp-edges; image-rendering: pixelated; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+        .preview-meta { position: absolute; z-index: 2; left: 16px; bottom: 14px; display: none; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: rgba(9,11,14,.72); color: var(--muted); backdrop-filter: blur(12px); font-size: 11px; }
+        .stage.has-preview .empty-state { display: none; }
+        .stage.has-preview .preview-content, .stage.has-preview .preview-meta { display: flex; }
+        .stage-drop { position: absolute; inset: 9px; z-index: 3; display: none; place-items: center; border: 1px dashed var(--orange); border-radius: 12px; background: rgba(255,159,10,.1); color: #ffd58d; font-weight: 650; }
+        body.drag-over .stage-drop { display: grid; }
+        body.drag-over .stage { border-color: var(--orange); }
+
+        .sidebar-collapsed .sidebar { padding-left: 12px; padding-right: 12px; align-items: center; }
+        .sidebar-collapsed .sidebar-head { flex-direction: column; gap: 14px; width: 100%; }
+        .sidebar-collapsed .brand { padding: 0; }
+        .sidebar-collapsed .brand-copy, .sidebar-collapsed .workflow-title, .sidebar-collapsed .step > div:not(.step-number), .sidebar-collapsed .step-state, .sidebar-collapsed .tip-card { display: none; }
+        .sidebar-collapsed .brand-mark { width: 42px; height: 42px; }
+        .sidebar-collapsed .sidebar-toggle { width: 34px; height: 30px; }
+        .sidebar-collapsed .workflow { width: 100%; gap: 10px; }
+        .sidebar-collapsed .step { grid-template-columns: 1fr; justify-items: center; width: 52px; min-height: 52px; margin: 0 auto; padding: 10px 0; }
+        .sidebar-collapsed .step-number { width: 32px; height: 32px; font-size: 13px; }
+
+        .control-card { padding-bottom: 22px; }
+        .control-card .card-head { padding-bottom: 12px; }
+        .source-row { display: flex; align-items: center; gap: 10px; margin: 0 23px 20px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+        .source-icon { color: var(--orange); font-size: 16px; }
+        .source-path { min-width: 0; flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+        .section { padding: 0 23px; }
+        .section + .section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+        .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; color: var(--muted); font-size: 12px; font-weight: 650; }
+        .section-label strong { color: var(--text); font-size: 13px; }
+        .range-values { color: var(--orange); font-variant-numeric: tabular-nums; font-size: 12px; }
+        .timeline { position: relative; height: 36px; margin: 0 4px 4px; }
+        .timeline-rail, .timeline-fill { position: absolute; top: 14px; height: 6px; border-radius: 999px; pointer-events: none; }
+        .timeline-rail { left: 0; right: 0; background: #101318; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+        .timeline-fill { left: 0; width: 100%; background: linear-gradient(90deg, var(--orange), #ffd60a); box-shadow: 0 0 14px rgba(255,159,10,.22); }
+        input[type="range"] { position: absolute; inset: 0; width: 100%; height: 36px; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; pointer-events: none; }
+        input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: transparent; }
+        input[type="range"]::-webkit-slider-thumb { width: 19px; height: 19px; margin-top: -6px; appearance: none; -webkit-appearance: none; pointer-events: auto; cursor: grab; border: 3px solid #171a1f; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--orange), 0 3px 10px rgba(0,0,0,.4); }
+        input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
+        input[type="range"]::-moz-range-track { height: 6px; background: transparent; }
+        input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; pointer-events: auto; cursor: grab; border: 3px solid #171a1f; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--orange), 0 3px 10px rgba(0,0,0,.4); }
+        .range-foot { display: flex; justify-content: space-between; color: var(--subtle); font-size: 10px; font-variant-numeric: tabular-nums; }
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+        .input-wrap { position: relative; }
+        .input-wrap input { width: 100%; padding: 11px 12px; border: 1px solid var(--line-strong); border-radius: 11px; color: var(--text); background: rgba(8,10,13,.55); outline: none; font-variant-numeric: tabular-nums; transition: border-color 160ms ease, background-color 160ms ease; }
+        .input-wrap input:hover { background: rgba(8,10,13,.75); }
+        .input-wrap input:focus { border-color: var(--orange); }
+        .unit { position: absolute; right: 11px; top: 11px; color: var(--subtle); font-size: 11px; pointer-events: none; }
+        .generate { width: 100%; margin-top: 20px; padding: 13px 16px; border-radius: 12px; color: #1b1306; background: linear-gradient(135deg, #ffbd4a, var(--orange)); box-shadow: 0 8px 22px rgba(255,159,10,.18); cursor: pointer; font-weight: 750; transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease; }
+        .generate:hover { filter: brightness(1.08); }
+        .generate:active { transform: scale(.98); }
+        button:disabled, input:disabled { cursor: not-allowed; opacity: .48; }
+        .secondary-btn, .ghost-btn { padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); background: var(--surface-soft); cursor: pointer; font-size: 12px; font-weight: 650; transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease; }
+        .secondary-btn:hover, .ghost-btn:hover { border-color: rgba(255,159,10,.55); background: var(--orange-soft); }
+        .secondary-btn:active, .ghost-btn:active { transform: scale(.97); }
+
+        .output-card { max-width: 1280px; margin: 18px auto 0; overflow: hidden; }
+        .output-card .card-head { align-items: center; }
+        .output-state { display: inline-flex; align-items: center; gap: 6px; color: var(--subtle); font-size: 11px; }
+        .output-state.ready { color: var(--green); }
+        .output-area { display: block; width: calc(100% - 46px); min-height: 118px; margin: 0 23px 23px; padding: 14px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; color: #d7f8dc; background: rgba(8,10,13,.72); outline: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; line-height: 1.55; }
+        .output-area::placeholder { color: var(--subtle); }
+
+        [data-theme="light"] .card { background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(243,246,249,.94)); box-shadow: 0 18px 55px rgba(39,55,77,.1); }
+        [data-theme="light"] .stage { background-color: #e8edf1; background-image: radial-gradient(circle, rgba(15,23,42,.12) 1px, transparent 1px); }
+        [data-theme="light"] .preview-meta { background: rgba(255,255,255,.82); }
+        [data-theme="light"] .input-wrap input, [data-theme="light"] .output-area { color: var(--text); background: rgba(255,255,255,.78); }
+        [data-theme="light"] .output-area { color: #176d36; }
+        [data-theme="light"] .timeline-rail { background: #dbe1e7; box-shadow: inset 0 0 0 1px rgba(15,23,42,.08); }
+        [data-theme="light"] .progress-sheet { background: rgba(255,255,255,.94); box-shadow: 0 24px 80px rgba(39,55,77,.2); }
+        [data-theme="light"] .progress-track { background: rgba(15,23,42,.1); }
+
+        .overlay { position: fixed; inset: 0; z-index: 20; display: none; place-items: center; padding: 22px; background: rgba(4,5,7,.62); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .overlay.visible { display: grid; }
+        .progress-sheet { width: min(460px, 100%); padding: 25px; border: 1px solid var(--line-strong); border-radius: 22px; background: rgba(31,36,44,.92); box-shadow: 0 24px 80px rgba(0,0,0,.44); }
+        .progress-top { display: flex; align-items: center; gap: 13px; }
+        .progress-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--orange); background: var(--orange-soft); font-size: 18px; }
+        .progress-sheet h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+        .progress-sheet p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+        .progress-track { height: 7px; margin-top: 24px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+        .progress-bar { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--orange), #ffd60a); box-shadow: 0 0 16px rgba(255,159,10,.4); transition: width 180ms ease-out; }
+        .progress-row { display: flex; justify-content: space-between; margin-top: 9px; color: var(--muted); font-size: 11px; }
+        .drop-hint { display: none; }
+        .toast { position: fixed; z-index: 30; right: 22px; bottom: 22px; max-width: min(360px, calc(100vw - 44px)); padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: 12px; color: var(--text); background: rgba(35,40,48,.94); box-shadow: 0 16px 40px rgba(0,0,0,.3); opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; font-size: 12px; }
+        .toast.visible { opacity: 1; transform: translateY(0); }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+        @media (max-width: 900px) {
+            .app-shell { display: block; }
+            .app-shell.sidebar-collapsed { display: block; }
+            .sidebar { position: static; height: auto; padding: 18px 20px; border-right: 0; border-bottom: 1px solid var(--line); }
+            .sidebar-collapsed .sidebar { padding: 14px 20px; align-items: stretch; }
+            .sidebar-collapsed .sidebar-head { flex-direction: row; width: auto; }
+            .sidebar-collapsed .brand-copy { display: block; }
+            .sidebar-collapsed .brand { padding: 0 10px; }
+            .sidebar-collapsed .workflow { width: auto; }
+            .sidebar-collapsed .step { width: auto; min-height: 44px; margin: 0; padding: 6px; }
+            .sidebar-collapsed .step > div:not(.step-number), .sidebar-collapsed .step-state { display: none; }
+            .workflow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+            .workflow-title, .tip-card { display: none; }
+            .step { min-height: 44px; grid-template-columns: 25px 1fr; padding: 6px; }
+            .step-number { width: 24px; height: 24px; font-size: 11px; }
+            .step-note, .step-state { display: none; }
+            .main { padding: 24px 20px 36px; }
+        }
+        @media (max-width: 680px) {
+            .topbar { display: block; }
+            .top-actions { margin-top: 16px; flex-wrap: wrap; }
+            .workspace { display: block; }
+            .stage-card { min-height: 370px; margin-bottom: 18px; }
+            .stage { min-height: 282px; }
+            .preview-content img { width: 88%; height: 80%; }
+            .field-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+        }
+        @media (prefers-reduced-transparency: reduce) {
+            .sidebar, .overlay, .progress-sheet, .status-pill, .source-row, .card { background: var(--surface-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
+        }
+        @media (prefers-contrast: more) {
+            :root { --line: rgba(255,255,255,.25); --line-strong: rgba(255,255,255,.45); }
+        }
     </style>
 </head>
 <body>
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="工作流程">
+            <div class="sidebar-head">
+                <div class="brand">
+                    <div class="brand-mark" aria-hidden="true">✦</div>
+                    <div class="brand-copy"><strong>异星工厂</strong><small>视频蓝图工作台</small></div>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="收起侧栏" aria-expanded="true" title="收起侧栏"><span class="toggle-icon" aria-hidden="true">‹</span><span class="toggle-copy">收起侧栏</span></button>
+            </div>
+            <nav class="workflow">
+                <div class="workflow-title eyebrow">制作流程</div>
+                <div class="step active" id="stepSource"><div class="step-number">1</div><div><div class="step-title">导入视频</div><span class="step-note">选择或拖入文件</span></div><span class="step-state">进行中</span></div>
+                <div class="step" id="stepRange"><div class="step-number">2</div><div><div class="step-title">设置片段</div><span class="step-note">调整范围与采样</span></div><span class="step-state">待开始</span></div>
+                <div class="step" id="stepOutput"><div class="step-number">3</div><div><div class="step-title">生成蓝图</div><span class="step-note">复制到游戏中</span></div><span class="step-state">待开始</span></div>
+            </nav>
+            <div class="tip-card"><strong>小提示</strong>拖入视频后，用左右方向键微调当前预览帧。Step 越大，蓝图体积越小。</div>
+        </aside>
 
-<div class="drop-hint">📂 松开鼠标，立刻加载视频</div>
+        <main class="main">
+            <header class="topbar">
+                <div><div class="eyebrow">Blueprint Studio / 01</div><h1>把一段视频，变成一面屏幕。</h1><p>在 Factorio 中播放你喜欢的画面，先从选择一个源文件开始。</p></div>
+                <div class="top-actions">
+                    <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到白天模式" title="切换到白天模式"><span class="theme-icon" id="themeIcon" aria-hidden="true">☼</span><span id="themeLabel">白天</span></button>
+                    <div class="status-pill" id="statusPill"><span class="status-dot"></span><span id="statusText">等待导入</span></div>
+                </div>
+            </header>
 
-<div class="overlay" id="loadingOverlay">
-    <div class="spinner" id="loadingSpinner"></div>
-    <h2 id="loadingTitle" style="color: var(--border-copper); margin-top: 10px;">[ 正在组装齿轮与组合算符... ]</h2>
-    <p id="loadingDesc" style="color: #aaa;">这可能需要一点时间</p>
-    
-    <!-- 全新加入的酷炫进度条 -->
-    <div class="progress-container" id="progressContainer">
-        <div class="progress-bar" id="progressBar"></div>
-        <div class="progress-text" id="progressText">0%</div>
-    </div>
-</div>
+            <section class="workspace">
+                <article class="card stage-card">
+                    <div class="card-head"><div><h2 class="card-title">预览工作区</h2><p class="card-caption" id="previewLabel">等待一个视频文件</p></div><span class="eyebrow" id="frameBadge">FRAME —</span></div>
+                    <div class="stage" id="stage">
+                        <div class="empty-state"><div class="upload-orb" aria-hidden="true">↥</div><h2>从这里开始</h2><p>支持 MP4、MKV、AVI 与 GIF。拖到这个区域，或选择本地文件。</p><button class="secondary-btn" id="browseBtn" type="button" onclick="selectVideo()">选择视频文件</button></div>
+                        <div class="preview-content"><img id="previewImage" alt="当前帧预览"></div>
+                        <div class="preview-meta" id="previewMeta">尚未读取预览</div>
+                        <div class="stage-drop">松开鼠标，导入这个视频</div>
+                    </div>
+                </article>
 
-<div class="container">
-    <h1>⚙️ 异星工场 视频蓝图生成器 ⚙️</h1>
+                <article class="card control-card">
+                    <div class="card-head"><div><h2 class="card-title">片段设置</h2><p class="card-caption">控制画面范围与蓝图密度</p></div></div>
+                    <div class="source-row"><span class="source-icon">●</span><span class="source-path" id="videoPathText">未选择源文件</span><button class="ghost-btn" type="button" onclick="selectVideo()">更换</button></div>
+                    <div class="section">
+                        <div class="section-label"><strong>截取范围</strong><span class="range-values"><span id="startVal">0</span> — <span id="endVal">0</span> 帧</span></div>
+                        <div class="timeline"><div class="timeline-rail"></div><div class="timeline-fill" id="timelineFill"></div><label class="sr-only" for="startFrame">开始帧</label><input type="range" id="startFrame" min="0" max="1" value="0" disabled oninput="updateValues('start')"><label class="sr-only" for="endFrame">结束帧</label><input type="range" id="endFrame" min="0" max="1" value="1" disabled oninput="updateValues('end')"></div>
+                        <div class="range-foot"><span>第 0 帧</span><span id="durationLabel">加载后可调整</span></div>
+                    </div>
+                    <div class="section">
+                        <div class="section-label"><strong>输出参数</strong><span id="sampleSummary">等待视频信息</span></div>
+                        <div class="field-grid"><div class="field"><label for="fpsInput">目标帧率</label><div class="input-wrap"><input type="number" id="fpsInput" value="24" min="1" max="120" disabled><span class="unit">FPS</span></div></div><div class="field"><label for="frameInterval">抽帧步长</label><div class="input-wrap"><input type="number" id="frameInterval" value="10" min="1" disabled><span class="unit">STEP</span></div></div></div>
+                        <button class="generate" id="generateBtn" type="button" onclick="generate()" disabled>生成蓝图 <span aria-hidden="true">→</span></button>
+                    </div>
+                </article>
+            </section>
 
-    <div class="panel">
-        <div class="row" style="justify-content: center; margin-bottom: 15px;">
-            <div id="previewContainer" style="display: none; flex-direction: column; align-items: center; background: #000; border: 1px solid var(--border-copper); padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box;">
-                <span id="previewLabel" style="font-size: 13px; color: var(--border-copper); margin-bottom: 5px; font-weight: bold;">预览画面</span>
-                <img id="previewImage" src="" alt="预览帧" style="height: 250px; width: 100%; object-fit: contain; border-radius: 3px; image-rendering: pixelated;">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col">
-                <label>► 起始帧 <span id="startVal" style="color:#fff;">0</span></label>
-                <input type="range" id="startFrame" min="0" max="100" value="0" disabled oninput="updateValues('start')">
-            </div>
-            <div class="col">
-                <label>■ 结束帧 <span id="endVal" style="color:#fff;">100</span></label>
-                <input type="range" id="endFrame" min="0" max="100" value="100" disabled oninput="updateValues('end')">
-            </div>
-        </div>
-        <div class="row">
-            <div style="flex-grow: 1; margin-right: 15px;">
-                <label>选择输入文件 (可以直接将视频文件拖拽到本窗口中):</label>
-                <input type="text" id="videoPath" style="width: 100%; background: #222;" readonly placeholder="等待选择源文件...">
-            </div>
-            <div style="margin-top: 22px;">
-                <button id="browseBtn" onclick="selectVideo()">📂 浏览文件</button>
-            </div>
-        </div>
-        <div class="row" style="margin-bottom: 0;">
-            <span class="info-tag" id="videoInfo">视频信息: 未加载</span>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="row" style="margin-top: 25px;">
-            <div class="col" style="width: 30%;">
-                <label>⏱️ 目标FPS设置</label>
-                <input type="number" id="fpsInput" value="24" disabled>
-            </div>
-            <div class="col" style="width: 30%;">
-                <label>⏩ 抽帧跨度 (Step)</label>
-                <input type="number" id="frameInterval" value="10" min="1" disabled title="值越大，提取的图片越少，蓝图越小" onchange="if(this.value < 1 || isNaN(this.value)) this.value = 1;">
-            </div>
-            <div class="col" style="width: 30%; align-items: flex-end; justify-content: flex-end;">
-                <button id="generateBtn" onclick="generate()" disabled style="width: 100%;">🚀 生成蓝图</button>
-            </div>
-        </div>
+            <section class="card output-card">
+                <div class="card-head"><div><h2 class="card-title">蓝图结果</h2><p class="card-caption">生成后复制这段字符串，并在游戏中导入。</p></div><div class="output-state" id="outputState">○ 尚未生成</div><button class="ghost-btn" id="copyBtn" type="button" onclick="copyToClipboard()" disabled>复制蓝图</button></div>
+                <textarea class="output-area" id="outputArea" readonly placeholder="蓝图字符串会出现在这里……"></textarea>
+            </section>
+        </main>
     </div>
 
-    <div class="panel">
-        <div class="row">
-            <label>📜 蓝图代码 (Blueprint String):</label>
-            <button id="copyBtn" onclick="copyToClipboard()" disabled style="padding: 5px 15px; font-size: 14px; background: #2D6A4F;">📋 一键复制</button>
-        </div>
-        <textarea id="outputArea" readonly placeholder="蓝图字符串将在这里生成..."></textarea>
+    <div class="overlay" id="loadingOverlay" role="dialog" aria-modal="true" aria-labelledby="loadingTitle">
+        <div class="progress-sheet"><div class="progress-top"><div class="progress-icon">✦</div><div><h2 id="loadingTitle">正在准备视频</h2><p id="loadingDesc">正在读取媒体信息……</p></div></div><div class="progress-track"><div class="progress-bar" id="progressBar"></div></div><div class="progress-row"><span id="progressMessage">请稍候</span><strong id="progressText">0%</strong></div></div>
     </div>
-</div>
+    <div class="toast" id="toast" role="status"></div>
 
-<script>
-    let maxFrames = 0;
-    let previewTimeout = null; 
+    <script>
+        let maxFrames = 0;
+        let previewTimer = null;
+        let previewRequest = 0;
+        let toastTimer = null;
+        let activeFrame = 0;
 
-    // === 新增：供 Python 回调的全局更新进度函数 ===
-    function updateProgress(percent, message) {
-        document.getElementById('progressContainer').style.display = 'block';
-        document.getElementById('progressBar').style.width = percent + '%';
-        document.getElementById('progressText').innerText = percent + '%';
-        if (message) {
-            document.getElementById('loadingDesc').innerText = message;
+        const $ = (id) => document.getElementById(id);
+        const setVisible = (id, visible) => $(id).classList.toggle('visible', visible);
+
+        function setSidebarCollapsed(collapsed, persist = true) {
+            const shell = document.querySelector('.app-shell');
+            const toggle = $('sidebarToggle');
+            shell.classList.toggle('sidebar-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-label', collapsed ? '展开侧栏' : '收起侧栏');
+            toggle.title = collapsed ? '展开侧栏' : '收起侧栏';
+            toggle.querySelector('.toggle-icon').textContent = collapsed ? '›' : '‹';
+            if (persist) {
+                try { localStorage.setItem('factorio-sidebar-collapsed', collapsed ? '1' : '0'); } catch (_) { /* 部分桌面内核可能禁用 localStorage */ }
+            }
         }
-    }
 
-    // --- 拖拽 UI 效果交互 ---
-    let dragCounter = 0;
-    document.body.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.body.classList.add('drag-over'); });
-    document.body.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) document.body.classList.remove('drag-over'); });
-    document.body.addEventListener('dragover', (e) => { e.preventDefault(); });
-    document.body.addEventListener('drop', (e) => { e.preventDefault(); dragCounter = 0; document.body.classList.remove('drag-over'); });
+        let sidebarCollapsed = false;
+        try { sidebarCollapsed = localStorage.getItem('factorio-sidebar-collapsed') === '1'; } catch (_) { /* 使用默认展开状态 */ }
+        setSidebarCollapsed(sidebarCollapsed, false);
+        $('sidebarToggle').addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            setSidebarCollapsed(sidebarCollapsed);
+        });
 
-    async function selectVideo() {
-        document.getElementById('browseBtn').disabled = true;
-        const path = await pywebview.api.select_file();
-        if (path) {
-            await handleDroppedFile(path);
-        } else {
-            document.getElementById('browseBtn').disabled = false;
+        function setTheme(theme, persist = true) {
+            const isLight = theme === 'light';
+            document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
+            $('themeIcon').textContent = isLight ? '☾' : '☼';
+            $('themeLabel').textContent = isLight ? '黑夜' : '白天';
+            $('themeToggle').setAttribute('aria-label', isLight ? '切换到黑夜模式' : '切换到白天模式');
+            $('themeToggle').title = isLight ? '切换到黑夜模式' : '切换到白天模式';
+            if (persist) {
+                try { localStorage.setItem('factorio-theme', isLight ? 'light' : 'dark'); } catch (_) { /* 部分桌面内核可能禁用 localStorage */ }
+            }
         }
-    }
 
-    async function handleDroppedFile(path) {
-        document.getElementById('browseBtn').disabled = true;
-        
-        // 初始加载视频信息时不需要进度条
-        document.getElementById('loadingTitle').innerText = "[ 正在扫描视频光盘数据... ]";
-        document.getElementById('loadingDesc').innerText = "解析视频元数据，请稍候...";
-        document.getElementById('progressContainer').style.display = 'none';
-        document.getElementById('loadingOverlay').style.display = 'flex';
+        let currentTheme = 'dark';
+        try { currentTheme = localStorage.getItem('factorio-theme') || 'dark'; } catch (_) { /* 使用默认黑夜模式 */ }
+        setTheme(currentTheme, false);
+        $('themeToggle').addEventListener('click', () => {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(currentTheme);
+        });
 
-        setTimeout(async () => {
-            const info = await pywebview.api.process_video(path);
-            
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('browseBtn').disabled = false;
+        function showToast(message) {
+            const toast = $('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+        }
 
-            if (info && info.success) {
-                document.getElementById('videoPath').value = info.path;
-                maxFrames = info.total_frames;
-                
-                ['startFrame', 'endFrame', 'fpsInput', 'frameInterval', 'generateBtn'].forEach(id => {
-                    document.getElementById(id).disabled = false;
-                });
-                
+        function setStatus(text, mood = '') {
+            $('statusText').textContent = text;
+            $('statusPill').className = `status-pill ${mood}`.trim();
+        }
+
+        function updateWorkflow(stage) {
+            const steps = [$('stepSource'), $('stepRange'), $('stepOutput')];
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index === stage);
+                step.classList.toggle('done', index < stage);
+                step.querySelector('.step-state').textContent = index < stage ? '完成' : index === stage ? '进行中' : '待开始';
+            });
+        }
+
+        function updateProgress(percent, message) {
+            const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+            $('progressBar').style.width = `${safePercent}%`;
+            $('progressText').textContent = `${Math.round(safePercent)}%`;
+            if (message) { $('loadingDesc').textContent = message; $('progressMessage').textContent = message; }
+        }
+
+        function setBusy(busy, title = '正在处理') {
+            setVisible('loadingOverlay', busy);
+            $('loadingTitle').textContent = title;
+            $('browseBtn').disabled = busy;
+            ['startFrame', 'endFrame', 'fpsInput', 'frameInterval'].forEach(id => $(id).disabled = busy || !maxFrames);
+            $('generateBtn').disabled = busy || !maxFrames;
+        }
+
+        async function selectVideo() {
+            if (!window.pywebview || !pywebview.api) { showToast('请在桌面应用中选择文件'); return; }
+            $('browseBtn').disabled = true;
+            try {
+                const path = await pywebview.api.select_file();
+                if (path) await handleDroppedFile(path);
+            } catch (error) {
+                showToast(`无法打开文件选择器：${error.message || error}`);
+            } finally {
+                $('browseBtn').disabled = false;
+            }
+        }
+
+        async function handleDroppedFile(path) {
+            if (!path || !window.pywebview || !pywebview.api) return;
+            $('videoPathText').textContent = path;
+            $('previewLabel').textContent = '正在读取视频信息……';
+            setStatus('正在分析', 'busy');
+            updateWorkflow(0);
+            setBusy(true, '正在分析视频');
+            updateProgress(0, '读取媒体信息……');
+            try {
+                const info = await pywebview.api.process_video(path);
+                if (!info || !info.success) throw new Error(info?.error || '未知读取错误');
+                maxFrames = Math.max(1, Number(info.total_frames) || 1);
                 const maxValidFrame = Math.max(0, maxFrames - 1);
-                
-                document.getElementById('startFrame').max = maxValidFrame;
-                document.getElementById('endFrame').max = maxValidFrame;
-                document.getElementById('endFrame').value = maxValidFrame;
-                document.getElementById('fpsInput').value = Math.round(info.fps);
-                document.getElementById('videoInfo').innerText = `视频信息: ${info.fps.toFixed(2)} FPS | 共计 ${maxFrames} 帧`;
-                
-                updateValues('start'); 
-            } else {
-                alert("读取错误: " + (info ? info.error : "未知错误"));
-            }
-        }, 150);
-    }
-
-   function updateValues(triggerSource) {
-        let start = parseInt(document.getElementById('startFrame').value);
-        let end = parseInt(document.getElementById('endFrame').value);
-        const maxIndex = parseInt(document.getElementById('endFrame').max);
-        
-        if(start >= end) { 
-            if(triggerSource === 'start') {
-                start = Math.max(0, end - 1); 
-                document.getElementById('startFrame').value = start; 
-            } else if (triggerSource === 'end') {
-                end = Math.min(maxIndex, start + 1);
-                document.getElementById('endFrame').value = end;
-                if(start >= end) {
-                    start = Math.max(0, end - 1);
-                    document.getElementById('startFrame').value = start;
-                }
+                $('startFrame').max = maxValidFrame;
+                $('endFrame').max = maxValidFrame;
+                $('startFrame').value = 0;
+                $('endFrame').value = maxValidFrame;
+                $('fpsInput').value = Math.max(1, Math.round(Number(info.fps) || 24));
+                ['startFrame', 'endFrame', 'fpsInput', 'frameInterval', 'generateBtn'].forEach(id => $(id).disabled = false);
+                $('videoPathText').textContent = info.path || path;
+                $('sampleSummary').textContent = `${Number(info.fps || 0).toFixed(2)} FPS`;
+                $('durationLabel').textContent = `${maxFrames.toLocaleString()} 帧`;
+                $('previewLabel').textContent = '已载入 · 拖动时间轴查看画面';
+                $('stage').classList.add('has-preview');
+                setStatus('已准备好', 'ready');
+                updateWorkflow(1);
+                updateValues('start');
+                showToast('视频已载入，可以开始设置片段');
+            } catch (error) {
+                maxFrames = 0;
+                ['startFrame', 'endFrame', 'fpsInput', 'frameInterval', 'generateBtn', 'copyBtn'].forEach(id => $(id).disabled = true);
+                $('stage').classList.remove('has-preview');
+                setStatus('导入失败');
+                $('previewLabel').textContent = '无法读取这个视频';
+                showToast(`导入失败：${error.message || error}`);
+            } finally {
+                setBusy(false);
+                $('browseBtn').disabled = false;
             }
         }
-        
-        document.getElementById('startVal').innerText = start;
-        document.getElementById('endVal').innerText = end;
 
-        let targetFrame = (triggerSource === 'start') ? start : end;
-        if(targetFrame !== undefined && !isNaN(targetFrame)) {
-            clearTimeout(previewTimeout);
-            previewTimeout = setTimeout(() => {
-                fetchPreview(targetFrame, triggerSource);
-            }, 200); 
-        }
-    }
-
-    async function fetchPreview(frameIdx, source) {
-        const path = document.getElementById('videoPath').value;
-        if(!path) return;
-        
-        const container = document.getElementById('previewContainer');
-        const label = document.getElementById('previewLabel');
-        const img = document.getElementById('previewImage');
-        
-        container.style.display = 'flex';
-        const sourceName = source === 'start' ? '起始帧' : '结束帧';
-        label.innerText = `[ 读取中... ${sourceName} : ${frameIdx} ]`;
-        
-        const res = await pywebview.api.get_frame_preview(path, frameIdx);
-        
-        if(res && res.success) {
-            img.src = res.image;
-            label.innerText = `👁️ ${sourceName}预览 (第 ${frameIdx} 帧)`;
-        } else {
-            label.innerText = `❌ 无法预览第 ${frameIdx} 帧`;
-        }
-    }
-
-    async function generate() {
-        const path = document.getElementById('videoPath').value;
-        const fps = document.getElementById('fpsInput').value;
-        const start = document.getElementById('startFrame').value;
-        const end = document.getElementById('endFrame').value;
-        
-        let interval = parseInt(document.getElementById('frameInterval').value);
-        if (isNaN(interval) || interval < 1) {
-            interval = 1;
-            document.getElementById('frameInterval').value = 1;
-        }
-
-        // --- 初始化生成动画和进度条 ---
-        document.getElementById('loadingTitle').innerText = "[ 传送带开始运作，准备制造蓝图... ]";
-        document.getElementById('loadingDesc').innerText = "启动中...";
-        
-        document.getElementById('progressContainer').style.display = 'block';
-        document.getElementById('progressBar').style.width = '0%';
-        document.getElementById('progressText').innerText = '0%';
-        
-        document.getElementById('loadingOverlay').style.display = 'flex';
-        document.getElementById('outputArea').value = "";
-        document.getElementById('copyBtn').disabled = true;
-
-        setTimeout(async () => {
-            const response = await pywebview.api.generate_blueprint(path, fps, start, end, interval);
-            document.getElementById('loadingOverlay').style.display = 'none';
-
-            if(response && response.success) {
-                document.getElementById('outputArea').value = response.blueprint;
-                document.getElementById('copyBtn').disabled = false;
-            } else {
-                alert("生成失败:\n" + (response ? response.error : "未知错误"));
+        function updateValues(triggerSource) {
+            let start = Number($('startFrame').value);
+            let end = Number($('endFrame').value);
+            const maxIndex = Number($('endFrame').max) || 1;
+            if (start >= end) {
+                if (triggerSource === 'start') start = Math.max(0, end - 1);
+                else end = Math.min(maxIndex, start + 1);
+                if (start >= end) { start = Math.max(0, end - 1); end = Math.min(maxIndex, start + 1); }
+                $('startFrame').value = start;
+                $('endFrame').value = end;
             }
-        }, 150);
-    }
+            $('startVal').textContent = start.toLocaleString();
+            $('endVal').textContent = end.toLocaleString();
+            $('frameBadge').textContent = `FRAME ${triggerSource === 'start' ? start : end}`;
+            const startPercent = maxIndex ? (start / maxIndex) * 100 : 0;
+            const endPercent = maxIndex ? (end / maxIndex) * 100 : 100;
+            $('timelineFill').style.left = `${startPercent}%`;
+            $('timelineFill').style.width = `${Math.max(0, endPercent - startPercent)}%`;
+            $('sampleSummary').textContent = maxFrames ? `${(end - start + 1).toLocaleString()} 帧片段` : '等待视频信息';
+            activeFrame = triggerSource === 'start' ? start : end;
+            clearTimeout(previewTimer);
+            if (maxFrames) previewTimer = setTimeout(() => fetchPreview(activeFrame, triggerSource), 140);
+        }
 
-    function copyToClipboard() {
-        const copyText = document.getElementById("outputArea");
-        copyText.select();
-        document.execCommand("copy");
-        
-        const btn = document.getElementById('copyBtn');
-        const originalText = btn.innerText;
-        btn.innerText = "✔️ 复制成功!";
-        btn.style.background = "#A3D977";
-        btn.style.color = "#111";
-        setTimeout(() => { btn.innerText = originalText; btn.style.background = "#2D6A4F"; btn.style.color = "#fff"; }, 2000);
-    }
-</script>
+        async function fetchPreview(frameIdx, source) {
+            const path = $('videoPathText').textContent;
+            if (!path || path === '未选择源文件' || !window.pywebview || !pywebview.api) return;
+            const requestId = ++previewRequest;
+            $('previewMeta').textContent = `正在读取第 ${Number(frameIdx).toLocaleString()} 帧……`;
+            try {
+                const result = await pywebview.api.get_frame_preview(path, frameIdx);
+                if (requestId !== previewRequest) return;
+                if (!result || !result.success) throw new Error(result?.error || '预览不可用');
+                $('previewImage').src = result.image;
+                $('previewMeta').textContent = `${source === 'start' ? '开始' : '结束'}帧 · 第 ${Number(frameIdx).toLocaleString()} 帧`;
+            } catch (error) {
+                if (requestId === previewRequest) $('previewMeta').textContent = '当前帧暂时无法预览';
+            }
+        }
+
+        async function generate() {
+            const path = $('videoPathText').textContent;
+            if (!path || path === '未选择源文件' || !maxFrames) { showToast('请先导入视频'); return; }
+            let interval = Number($('frameInterval').value);
+            if (!Number.isFinite(interval) || interval < 1) { interval = 1; $('frameInterval').value = 1; }
+            setStatus('正在生成', 'busy');
+            setBusy(true, '正在生成蓝图');
+            updateProgress(0, '准备提取画面……');
+            $('outputArea').value = '';
+            $('copyBtn').disabled = true;
+            $('outputState').className = 'output-state';
+            $('outputState').textContent = '○ 正在生成';
+            try {
+                await new Promise(requestAnimationFrame);
+                const response = await pywebview.api.generate_blueprint(path, $('fpsInput').value, $('startFrame').value, $('endFrame').value, interval);
+                if (!response || !response.success) throw new Error(response?.error || '未知生成错误');
+                $('outputArea').value = response.blueprint || '';
+                $('copyBtn').disabled = false;
+                $('outputState').className = 'output-state ready';
+                $('outputState').textContent = '● 已生成';
+                setStatus('蓝图已就绪', 'ready');
+                updateWorkflow(2);
+                showToast('蓝图生成完成，现在可以复制');
+            } catch (error) {
+                $('outputState').textContent = '○ 生成失败';
+                setStatus('生成失败');
+                showToast(`生成失败：${error.message || error}`);
+            } finally {
+                setBusy(false);
+                $('generateBtn').disabled = false;
+            }
+        }
+
+        async function copyToClipboard() {
+            const value = $('outputArea').value;
+            if (!value) return;
+            try {
+                await navigator.clipboard.writeText(value);
+            } catch (_) {
+                $('outputArea').select();
+                document.execCommand('copy');
+            }
+            showToast('蓝图已复制到剪贴板');
+            $('copyBtn').textContent = '已复制 ✓';
+            setTimeout(() => $('copyBtn').textContent = '复制蓝图', 1800);
+        }
+
+        let dragCounter = 0;
+        document.body.addEventListener('dragenter', (event) => { event.preventDefault(); dragCounter++; document.body.classList.add('drag-over'); });
+        document.body.addEventListener('dragover', (event) => event.preventDefault());
+        document.body.addEventListener('dragleave', (event) => { event.preventDefault(); dragCounter = Math.max(0, dragCounter - 1); if (!dragCounter) document.body.classList.remove('drag-over'); });
+        document.body.addEventListener('drop', (event) => { event.preventDefault(); dragCounter = 0; document.body.classList.remove('drag-over'); });
+        document.addEventListener('keydown', (event) => {
+            if (!maxFrames || event.target.matches('input, textarea, button')) return;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                event.preventDefault();
+                const delta = event.key === 'ArrowLeft' ? -1 : 1;
+                const slider = activeFrame === Number($('startFrame').value) ? $('startFrame') : $('endFrame');
+                slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), Number(slider.value) + delta));
+                updateValues(slider.id === 'startFrame' ? 'start' : 'end');
+            }
+        });
+    </script>
 </body>
 </html>
